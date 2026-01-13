@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/create-tag.yml" />
+    <File Path=".github/workflows/publish.yml" />
+    <File Path="README.md" />
+  </Folder>
   <Project Path="JasmDebugger.Client.Tests/JasmDebugger.Client.Tests.csproj" />
   <Project Path="JasmDebugger.Client/JasmDebugger.Client.csproj" />
   <Project Path="JasmDebugger/JasmDebugger.csproj" />
