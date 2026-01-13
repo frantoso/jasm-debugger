@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="JasmDebugger.Client.Tests/JasmDebugger.Client.Tests.csproj" />
+  <Project Path="JasmDebugger.Client/JasmDebugger.Client.csproj" />
+  <Project Path="JasmDebugger/JasmDebugger.csproj" />
+</Solution>

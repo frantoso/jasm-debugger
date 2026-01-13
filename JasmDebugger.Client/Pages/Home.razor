@@ -1,0 +1,117 @@
+﻿@page "/"
+@using JasmDebugger.Client.View
+
+@inject SvgHubClient HubClient
+
+<h3>Diagrams</h3>
+
+<div style="display:flex; gap:0.5rem; height:92vh;">
+    <nav style="width:220px; border-right:1px solid #ddd; padding-right:8px; padding-top:4px; overflow:auto;">
+        <ul style="list-style:none; padding:2; margin:0;">
+            @foreach (var item in machines.Values)
+            {
+                <li style="margin-bottom:6px;">
+                    <button class="btn" style="width:100%; text-align:left; @(item.Key == selectedName ? "font-weight:bold;background:#eef" : "")" @onclick="() => Select(item.Key)">
+                        @item.Key
+                    </button>
+                </li>
+            }
+        </ul>
+    </nav>
+
+    <main style="flex:1; padding:8px; overflow:auto;">
+        @if (string.IsNullOrEmpty(selectedName))
+        {
+            <div>Waiting for diagrams...</div>
+        }
+        else if (machines.TryGetValue(selectedName, out var selected))
+        {
+            @selected.MarkMarkupString
+        }
+        else
+        {
+            <div>No diagram selected.</div>
+        }
+    </main>
+</div>
+
+@code {
+    private readonly Dictionary<string, StateMachine> machines = new();
+    private string? selectedName;
+
+    /// <summary>
+    ///     Initializes the SignalR hub client and sets up event handlers.
+    /// </summary>
+    /// <param name="firstRender">A value indicating whether it was the very first rendering.</param>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (!firstRender)
+        {
+            return;
+        }
+
+        HubClient.Clear();
+
+        // Register an event handler to add a new FSM when received from the server
+        HubClient.OnFsmReceived += async machine =>
+        {
+            // Update or add
+            machines[machine.Key] = machine;
+
+            // If nothing selected, select this one
+            if (string.IsNullOrEmpty(selectedName) || !machines.ContainsKey(selectedName))
+            {
+                Select(machine.Key);
+            }
+
+            await InvokeAsync(StateHasChanged);
+        };
+
+        // Register an event handler to remove an FSM when a client disconnects
+        HubClient.OnFsmRemoved += async machine =>
+        {
+            machines.Remove(machine.Key);
+            SelectFirst();
+            await InvokeAsync(StateHasChanged);
+        };
+
+        // Register an event handler to update an FSM when the state changes
+        HubClient.OnUpdateStateReceived += async machine =>
+        {
+            // Update stored instance (updates come from same object reference in client)
+            machines[machine.Key] = machine;
+
+            // If updated machine is the selected one, refresh view
+            if (machine.Key == selectedName)
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        };
+    }
+
+    /// <summary>
+    ///     Starts the SignalR hub client when the component is initialized.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await HubClient.StartAsync();
+    }
+
+    /// <summary>
+    ///     Selects the given menu item.
+    /// </summary>
+    /// <param name="name">The name of the item to select.</param>
+    private void Select(string? name)
+    {
+        selectedName = name;
+    }
+
+    /// <summary>
+    ///     Selects the first menu item, if there is one.
+    /// </summary>
+    private void SelectFirst()
+    {
+        Select(machines.Keys.FirstOrDefault());
+    }
+}
