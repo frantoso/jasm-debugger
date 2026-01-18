@@ -9,6 +9,7 @@ namespace JasmDebugger.Model;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Client.Model;
+using Client.View;
 
 /// <summary>
 ///     A helper class to deserialize multiple messages sent together over TCP.
@@ -25,20 +26,20 @@ public partial class MessageContainer
     /// </summary>
     /// <param name="message">The message.</param>
     /// <returns>Returns a container with one or more <see cref="JasmCommand" /> instances.</returns>
-    public static MessageContainer FromMessage(string message)
+    public static MessageContainer? FromMessage(string message)
     {
         try
         {
             // it may happen, that multiple JSON objects are sent together
             var messages = $"{{\"Messages\":[{SplitMessagesRegex().Replace(message, "},{")}]}}";
-            return JsonSerializer.Deserialize<MessageContainer>(messages) ?? new MessageContainer();
+            return messages.Deserialize<MessageContainer>() ?? new MessageContainer();
         }
-        catch (JsonException jsonEx)
+        catch (JsonException ex)
         {
-            Console.WriteLine($"JSON error: {jsonEx.Message}");
+            Console.WriteLine($"JSON error: {ex.Message}");
         }
 
-        return new MessageContainer();
+        return null;
     }
 
     /// <summary>

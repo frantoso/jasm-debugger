@@ -12,6 +12,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using Client.Model;
+using Client.View;
 using Microsoft.AspNetCore.SignalR;
 using Model;
 
@@ -85,7 +86,7 @@ public class TcpBackgroundService(IHubContext<SvgHub> hubContext, TcpClientConta
     /// <param name="cancellationToken">The stopping token.</param>
     private async Task HandleClient(TcpClient client, CancellationToken cancellationToken)
     {
-        var clientId = $"{Interlocked.Increment(ref TcpBackgroundService.clientCounter)}";
+        var clientId = $"{Interlocked.Increment(ref clientCounter)}";
         this.TcpClients.Add(clientId, client);
         Console.WriteLine($"Client {clientId} connected.");
 
@@ -101,7 +102,7 @@ public class TcpBackgroundService(IHubContext<SvgHub> hubContext, TcpClientConta
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Read error for client {clientId}: {ex.Message}");
+                Console.WriteLine($"Read from client {clientId}, error: {ex.Message}");
                 break;
             }
 
@@ -110,9 +111,17 @@ public class TcpBackgroundService(IHubContext<SvgHub> hubContext, TcpClientConta
                 break;
             }
 
-            var data = await TcpBackgroundService.DecodeData(buffer, bytesRead, cancellationToken);
-            var container = MessageContainer.FromMessage(data);
-            await this.BroadcastMessages(clientId, container, cancellationToken);
+            try
+            {
+                var data = await DecodeData(buffer, bytesRead, cancellationToken);
+
+                await (MessageContainer.FromMessage(data)?.Let(container =>
+                    this.BroadcastMessages(clientId, container, cancellationToken)) ?? Task.CompletedTask);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling message from client {clientId}: {ex.Message}");
+            }
         }
 
         await this.RemoveClient(clientId, $"Client {clientId} disconnected.", cancellationToken);
